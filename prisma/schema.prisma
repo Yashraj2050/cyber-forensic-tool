@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Entity {
+  id          String   @id @default(cuid())
+  alias       String
+  username    String?
+  email       String?
+  riskLevel   Int      @default(1) // 1-5 risk level
+  isMalicious Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  posts       Post[]
+  wallets     Wallet[]
+  links       EntityLink[] @relation("EntityLinks")
+  linkedTo    EntityLink[] @relation("LinkedEntities")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  authorId    String
+  forumName   String?
+  onionUrl    String?
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  author      Entity   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  extractedEntities ExtractedEntity[]
+}
+
+model ExtractedEntity {
+  id        String   @id @default(cuid())
+  type      String   // "username", "email", "wallet", "phone"
+  value     String
+  postId    String
+  createdAt DateTime @default(now())
+  
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  id          String   @id @default(cuid())
+  address     String   @unique
+  type        String   // "BTC", "ETH", etc.
+  balance     Float    @default(0)
+  entityId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  entity      Entity?  @relation(fields: [entityId], references: [id])
+  transactions Transaction[] @relation("FromWallet")
+  received    Transaction[] @relation("ToWallet")
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  hash          String   @unique
+  amount        Float
+  currency      String   // "BTC", "ETH", etc.
+  fromWalletId  String
+  toWalletId    String
+  timestamp     DateTime @default(now())
+  blockNumber   Int?
+  isSuspicious  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  
+  fromWallet    Wallet   @relation("FromWallet", fields: [fromWalletId], references: [id])
+  toWallet      Wallet   @relation("ToWallet", fields: [toWalletId], references: [id])
+}
+
+model EntityLink {
+  id          String   @id @default(cuid())
+  fromEntityId String
+  toEntityId   String
+  linkType     String   // "same_author", "shared_wallet", "similar_pattern"
+  confidence   Float    @default(0.5) // 0-1 confidence score
+  createdAt    DateTime @default(now())
+  
+  fromEntity   Entity   @relation("EntityLinks", fields: [fromEntityId], references: [id])
+  toEntity     Entity   @relation("LinkedEntities", fields: [toEntityId], references: [id])
+  
+  @@unique([fromEntityId, toEntityId, linkType])
+}
+
+model ForensicReport {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  content     String   // JSON content
+  format      String   // "json", "pdf"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
