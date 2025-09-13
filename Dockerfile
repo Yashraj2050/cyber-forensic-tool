@@ -1,36 +1,43 @@
-# Use the official Node.js runtime as the base image
-FROM node:18-alpine
+# -----------------------
+# 1. Build Stage
+# -----------------------
+FROM node:18-alpine AS builder
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if available)
-COPY package*.json ./
+# Copy dependency files
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
-# Copy the rest of the application code
+# Copy source code
 COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build the Next.js application
+# Build Next.js app
 RUN npm run build
 
-# Expose the port the app runs on
-EXPOSE 3000
+# -----------------------
+# 2. Runtime Stage
+# -----------------------
+FROM node:18-alpine AS runner
 
-# Define environment variable
+WORKDIR /app
+
 ENV NODE_ENV=production
 
-# Create a non-root user to run the application
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+# Copy only necessary files from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/public ./public
 
-# Change ownership of the app directory to the nextjs user
-USER nextjs
+# Expose app port
+EXPOSE 3000
 
-# Start the application
+# Start the app
 CMD ["npm", "start"]
