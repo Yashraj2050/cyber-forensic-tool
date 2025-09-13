@@ -1,20 +1,21 @@
 FROM node:20-alpine
 
-# Upgrade npm to version 9 to match lockfileVersion 3
-RUN npm install -g npm@9
-
 WORKDIR /app
 
-# Copy package files first for caching
+# Copy package files
 COPY package.json package-lock.json ./
 
-# Use --omit=dev instead of deprecated --only=production
-RUN npm ci --omit=dev
+# Install all dependencies (dev + prod) for build
+RUN npm ci
 
-# Copy the rest of the app
+# Copy app source
 COPY . .
 
-# Build if needed
+# Build Next.js app
 RUN npm run build
 
+# Optional: remove devDependencies after build to reduce image size
+RUN npm prune --production
+
+# Start the app
 CMD ["npm", "start"]
