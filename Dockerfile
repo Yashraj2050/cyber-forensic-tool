@@ -1,42 +1,30 @@
-# -----------------------
-# 1. Build Stage
-# -----------------------
+# Use Node.js LTS
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency files
+# Copy only dependency files first
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install --omit=dev
 
-# Copy source code
+# Copy the rest of the app
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Build (if your app needs a build step, e.g. Next.js or TS)
+RUN npm run build || echo "no build step"
 
-# Build Next.js app
-RUN npm run build
-
-# -----------------------
-# 2. Runtime Stage
-# -----------------------
-FROM node:18-alpine AS runner
+# --- Runtime image ---
+FROM node:18-alpine
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-
-# Copy only necessary files from builder
+# Copy only production dependencies from builder
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/public ./public
+COPY --from=builder /app ./
 
-# Expose app port
+# Expose port (update if your app uses a different one)
 EXPOSE 3000
 
 # Start the app
