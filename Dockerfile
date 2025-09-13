@@ -1,7 +1,10 @@
-# Stage 1: Build
-FROM node:20-alpine AS builder
+# Use Node 20 Alpine
+FROM node:20-alpine
 
 WORKDIR /app
+
+# Install bash (optional, useful for dev)
+RUN apk add --no-cache bash
 
 # Copy package files
 COPY package.json package-lock.json ./
@@ -9,27 +12,11 @@ COPY package.json package-lock.json ./
 # Install all dependencies (dev + prod)
 RUN npm ci
 
-# Copy app source
+# Copy the rest of the source code
 COPY . .
 
-# Build Next.js app
-RUN npm run build
+# Expose Next.js dev server port
+EXPOSE 3000
 
-# Stage 2: Production image
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install only production dependencies
-RUN npm ci --omit=dev
-
-# Copy built files from builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.js ./
-
-# Start the app
-CMD ["npm", "start"]
+# Start development server with hot reload
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
