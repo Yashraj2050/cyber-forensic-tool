@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 # Install all dependencies (dev + prod) for build
 RUN npm ci
 
-# Copy source code
+# Copy app source
 COPY . .
 
 # Build Next.js app
@@ -20,7 +20,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package files
 COPY package.json package-lock.json ./
 
 # Install only production dependencies
