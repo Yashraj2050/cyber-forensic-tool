@@ -1,31 +1,20 @@
-# Use Node.js LTS
-FROM node:18-alpine AS builder
+FROM node:20-alpine
+
+# Upgrade npm to version 9 to match lockfileVersion 3
+RUN npm install -g npm@9
 
 WORKDIR /app
 
-# Copy only dependency files first
+# Copy package files first for caching
 COPY package.json package-lock.json ./
 
-# Install dependencies (omit dev deps)
-RUN npm install --omit=dev
+# Use --omit=dev instead of deprecated --only=production
+RUN npm ci --omit=dev
 
 # Copy the rest of the app
 COPY . .
 
-# Build (if your app needs a build step like Next.js or TypeScript)
-RUN npm run build || echo "no build step"
+# Build if needed
+RUN npm run build
 
-# --- Runtime image ---
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy production deps from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app ./
-
-# Expose port (update if your app uses a different one)
-EXPOSE 3000
-
-# Start the app
 CMD ["npm", "start"]
