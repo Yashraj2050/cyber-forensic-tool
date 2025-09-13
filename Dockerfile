@@ -6,13 +6,13 @@ WORKDIR /app
 # Copy only dependency files first
 COPY package.json package-lock.json ./
 
-# Install dependencies
+# Install dependencies (omit dev deps)
 RUN npm install --omit=dev
 
 # Copy the rest of the app
 COPY . .
 
-# Build (if your app needs a build step, e.g. Next.js or TS)
+# Build (if your app needs a build step like Next.js or TypeScript)
 RUN npm run build || echo "no build step"
 
 # --- Runtime image ---
@@ -20,7 +20,7 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only production dependencies from builder
+# Copy production deps from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app ./
 
